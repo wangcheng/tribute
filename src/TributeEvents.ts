@@ -1,10 +1,19 @@
+interface KeyMapping {
+  key: number;
+  value: string;
+}
+
 class TributeEvents {
-  constructor(tribute) {
+  tribute: any;
+  commandEvent: boolean;
+  inputEvent: boolean;
+
+  constructor(tribute: any) {
     this.tribute = tribute;
     this.tribute.events = this;
   }
 
-  static keys() {
+  static keys(): KeyMapping[] {
     return [
       {
         key: 9,
@@ -37,27 +46,27 @@ class TributeEvents {
     ];
   }
 
-  bind(element) {
-    element.boundKeydown = this.keydown.bind(element, this);
-    element.boundKeyup = this.keyup.bind(element, this);
-    element.boundInput = this.input.bind(element, this);
+  bind(element: Element): void {
+    (element as any).boundKeydown = this.keydown.bind(element, this);
+    (element as any).boundKeyup = this.keyup.bind(element, this);
+    (element as any).boundInput = this.input.bind(element, this);
 
-    element.addEventListener("keydown", element.boundKeydown, true);
-    element.addEventListener("keyup", element.boundKeyup, true);
-    element.addEventListener("input", element.boundInput, true);
+    element.addEventListener("keydown", (element as any).boundKeydown, true);
+    element.addEventListener("keyup", (element as any).boundKeyup, true);
+    element.addEventListener("input", (element as any).boundInput, true);
   }
 
-  unbind(element) {
-    element.removeEventListener("keydown", element.boundKeydown, true);
-    element.removeEventListener("keyup", element.boundKeyup, true);
-    element.removeEventListener("input", element.boundInput, true);
+  unbind(element: Element): void {
+    element.removeEventListener("keydown", (element as any).boundKeydown, true);
+    element.removeEventListener("keyup", (element as any).boundKeyup, true);
+    element.removeEventListener("input", (element as any).boundInput, true);
 
-    delete element.boundKeydown;
-    delete element.boundKeyup;
-    delete element.boundInput;
+    delete (element as any).boundKeydown;
+    delete (element as any).boundKeyup;
+    delete (element as any).boundInput;
   }
 
-  keydown(instance, event) {
+  keydown(this: Element, instance: TributeEvents, event: KeyboardEvent): void {
     if (instance.shouldDeactivate(event)) {
       instance.tribute.isActive = false;
       instance.tribute.hideMenu();
@@ -74,19 +83,19 @@ class TributeEvents {
     });
   }
 
-  input(instance, event) {
+  input(this: Element, instance: TributeEvents, event: Event): void {
     instance.inputEvent = true;
     instance.keyup.call(this, instance, event);
   }
 
-  click(instance, event) {
+  click(instance: TributeEvents, event: MouseEvent): void {
     let tribute = instance.tribute;
     if (tribute.menu && tribute.menu.contains(event.target)) {
-      let li = event.target;
+      let li = event.target as HTMLElement;
       event.preventDefault();
       event.stopPropagation();
       while (li.nodeName.toLowerCase() !== "li") {
-        li = li.parentNode;
+        li = li.parentNode as HTMLElement;
         if (!li || li === tribute.menu) {
           throw new Error("cannot find the <li> container for the click");
         }
@@ -101,7 +110,7 @@ class TributeEvents {
     }
   }
 
-  keyup(instance, event) {
+  keyup(this: Element, instance: TributeEvents, event: KeyboardEvent): void {
     if (instance.inputEvent) {
       instance.inputEvent = false;
     }
@@ -122,7 +131,7 @@ class TributeEvents {
       } else {
         let keyCode = instance.getKeyCode(instance, this, event);
 
-        if (isNaN(keyCode) || !keyCode) return;
+        if (!keyCode || isNaN(keyCode)) return;
 
         let trigger = instance.tribute.triggers().find(trigger => {
           return trigger.charCodeAt(0) === keyCode;
@@ -151,7 +160,7 @@ class TributeEvents {
     }
   }
 
-  shouldDeactivate(event) {
+  shouldDeactivate(event: KeyboardEvent): boolean {
     if (!this.tribute.isActive) return false;
 
     if (this.tribute.current.mentionText.length === 0) {
@@ -166,7 +175,7 @@ class TributeEvents {
     return false;
   }
 
-  getKeyCode(instance, el, event) {
+  getKeyCode(instance: TributeEvents, el: Element, event: KeyboardEvent): number | false {
     let char;
     let tribute = instance.tribute;
     let info = tribute.range.getTriggerInfo(
@@ -184,7 +193,7 @@ class TributeEvents {
     }
   }
 
-  updateSelection(el) {
+  updateSelection(el: Element): void {
     this.tribute.current.element = el;
     let info = this.tribute.range.getTriggerInfo(
       false,
@@ -201,7 +210,7 @@ class TributeEvents {
     }
   }
 
-  callbacks() {
+  callbacks(): { [key: string]: (e: Event, el: Element, trigger?: string) => void } {
     return {
       triggerChar: (e, el, trigger) => {
         let tribute = this.tribute;
@@ -306,11 +315,11 @@ class TributeEvents {
     };
   }
 
-  setActiveLi(index) {
+  setActiveLi(index?: number): void {
     let lis = this.tribute.menu.querySelectorAll("li"),
       length = lis.length >>> 0;
 
-    if (index) this.tribute.menuSelected = parseInt(index);
+    if (index) this.tribute.menuSelected = index;
 
     for (let i = 0; i < length; i++) {
       let li = lis[i];
@@ -333,11 +342,11 @@ class TributeEvents {
     }
   }
 
-  getFullHeight(elem, includeMargin) {
+  getFullHeight(elem: Element, includeMargin?: boolean): number {
     let height = elem.getBoundingClientRect().height;
 
     if (includeMargin) {
-      let style = elem.currentStyle || window.getComputedStyle(elem);
+      let style = (elem as any).currentStyle || window.getComputedStyle(elem);
       return (
         height + parseFloat(style.marginTop) + parseFloat(style.marginBottom)
       );

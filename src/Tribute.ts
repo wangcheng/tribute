@@ -1,10 +1,88 @@
-import "./utils";
 import TributeEvents from "./TributeEvents";
 import TributeMenuEvents from "./TributeMenuEvents";
 import TributeRange from "./TributeRange";
 import TributeSearch from "./TributeSearch";
 
+interface TributeItem {
+  [key: string]: any;
+}
+
+interface TributeCollection {
+  trigger: string;
+  iframe?: HTMLIFrameElement | null;
+  selectClass: string;
+  containerClass: string;
+  itemClass: string;
+  selectTemplate: (item?: any) => string;
+  menuItemTemplate: (item: any) => string;
+  noMatchTemplate?: (() => string) | string | null;
+  lookup: string | ((item: any, mentionText: string) => string);
+  fillAttr: string;
+  values: TributeItem[] | ((text: string, callback: (items: TributeItem[]) => void) => void);
+  loadingItemTemplate?: string;
+  requireLeadingSpace?: boolean;
+  searchOpts?: {
+    pre?: string;
+    post?: string;
+    skip?: boolean;
+    extract?: (item: any) => string;
+  };
+  menuItemLimit?: number | null;
+  menuShowMinLength?: number;
+}
+
+interface TributeOptions {
+  values?: TributeItem[] | ((text: string, callback: (items: TributeItem[]) => void) => void) | null;
+  loadingItemTemplate?: string | null;
+  iframe?: HTMLIFrameElement | null;
+  selectClass?: string;
+  containerClass?: string;
+  itemClass?: string;
+  trigger?: string;
+  autocompleteMode?: boolean;
+  autocompleteSeparator?: string | null;
+  selectTemplate?: ((item?: any) => string) | null;
+  menuItemTemplate?: ((item: any) => string) | null;
+  lookup?: string;
+  fillAttr?: string;
+  collection?: Partial<TributeCollection>[] | null;
+  menuContainer?: HTMLElement | null;
+  noMatchTemplate?: (() => string) | string | null;
+  requireLeadingSpace?: boolean;
+  allowSpaces?: boolean;
+  replaceTextSuffix?: string | null;
+  positionMenu?: boolean;
+  spaceSelectsMatch?: boolean;
+  searchOpts?: {
+    pre?: string;
+    post?: string;
+    skip?: boolean;
+  };
+  menuItemLimit?: number | null;
+  menuShowMinLength?: number;
+}
+
 class Tribute {
+  autocompleteMode: boolean;
+  autocompleteSeparator: string | null;
+  menuSelected: number;
+  current: any;
+  inputEvent: boolean;
+  private _isActive: boolean;
+  menuContainer: HTMLElement | null;
+  allowSpaces: boolean;
+  replaceTextSuffix: string | null;
+  positionMenu: boolean;
+  hasTrailingSpace: boolean;
+  spaceSelectsMatch: boolean;
+  collection: TributeCollection[];
+  range: any;
+  events: any;
+  menuEvents: any;
+  search: any;
+  menu: HTMLElement | null;
+  currentMentionTextSnapshot: string;
+
   constructor({
     values = null,
     loadingItemTemplate = null,
@@ -30,7 +108,7 @@ class Tribute {
     searchOpts = {},
     menuItemLimit = null,
     menuShowMinLength = 0
-  }) {
+  }: TributeOptions = {}) {
     this.autocompleteMode = autocompleteMode;
     this.autocompleteSeparator = autocompleteSeparator;
     this.menuSelected = 0;
@@ -185,7 +263,7 @@ class Tribute {
     }
   }
 
-  static defaultSelectTemplate(item) {
+  static defaultSelectTemplate(this: Tribute, item?: any): string {
     if (typeof item === "undefined")
       return `${this.current.collection.trigger}${this.current.mentionText}`;
     if (this.range.isContentEditable(this.current.element)) {
@@ -203,28 +281,23 @@ class Tribute {
     );
   }
 
-  static defaultMenuItemTemplate(matchItem) {
+  static defaultMenuItemTemplate(matchItem: any): string {
     return matchItem.string;
   }
 
-  static inputTypes() {
+  static inputTypes(): string[] {
     return ["TEXTAREA", "INPUT"];
   }
 
-  triggers() {
+  triggers(): string[] {
     return this.collection.map(config => {
       return config.trigger;
     });
   }
 
-  attach(el) {
+  attach(el: HTMLElement | NodeList | HTMLCollection | HTMLElement[] | any): void {
     if (!el) {
       throw new Error("[Tribute] Must pass in a DOM node or NodeList.");
-    }
-
-    // Check if it is a jQuery collection
-    if (typeof jQuery !== "undefined" && el instanceof jQuery) {
-      el = el.get();
     }
 
     // Is el an Array/Array-like object?
@@ -242,17 +315,17 @@ class Tribute {
     }
   }
 
-  _attach(el) {
+  _attach(el: HTMLElement): void {
     if (el.hasAttribute("data-tribute")) {
       console.warn("Tribute was already bound to " + el.nodeName);
     }
 
     this.ensureEditable(el);
     this.events.bind(el);
-    el.setAttribute("data-tribute", true);
+    el.setAttribute("data-tribute", 'true');
   }
 
-  ensureEditable(element) {
+  ensureEditable(element: HTMLElement): void {
     if (Tribute.inputTypes().indexOf(element.nodeName) === -1) {
       if (!element.contentEditable) {
         throw new Error("[Tribute] Cannot bind to " + element.nodeName + ", not contentEditable");
@@ -260,7 +333,7 @@ class Tribute {
     }
   }
 
-  createMenu(containerClass) {
+  createMenu(containerClass: string): HTMLElement {
     let wrapper = this.range.getDocument().createElement("div"),
       ul = this.range.getDocument().createElement("ul");
     wrapper.className = containerClass;
@@ -273,7 +346,7 @@ class Tribute {
     return this.range.getDocument().body.appendChild(wrapper);
   }
 
-  showMenuFor(element, scrollTo) {
+  showMenuFor(element: HTMLElement, scrollTo?: boolean): void {
     // Only proceed if menu isn't already shown for the current element & mentionText
     if (
       this.isActive &&
@@ -287,7 +360,7 @@ class Tribute {
     // create the menu if it doesn't exist.
     if (!this.menu) {
       this.menu = this.createMenu(this.current.collection.containerClass);
-      element.tributeMenu = this.menu;
+      (element as any).tributeMenu = this.menu;
       this.menuEvents.bind(this.menu);
     }
 
@@ -386,13 +459,13 @@ class Tribute {
     }
   }
 
-  _findLiTarget(el) {
+  _findLiTarget(el: HTMLElement | null): [HTMLElement, string] | [] {
     if (!el) return [];
     const index = el.getAttribute("data-index");
-    return !index ? this._findLiTarget(el.parentNode) : [el, index];
+    return !index ? this._findLiTarget(el.parentNode as HTMLElement) : [el, index];
   }
 
-  showMenuForCollection(element, collectionIndex) {
+  showMenuForCollection(element: HTMLElement, collectionIndex?: number): void {
     if (element !== document.activeElement) {
       this.placeCaretAtEnd(element);
     }
@@ -403,13 +476,13 @@ class Tribute {
 
     if (element.isContentEditable)
       this.insertTextAtCursor(this.current.collection.trigger);
-    else this.insertAtCaret(element, this.current.collection.trigger);
+    else this.insertAtCaret(element as HTMLTextAreaElement | HTMLInputElement, this.current.collection.trigger);
 
     this.showMenuFor(element);
   }
 
   // TODO: make sure this works for inputs/textareas
-  placeCaretAtEnd(el) {
+  placeCaretAtEnd(el: HTMLElement): void {
     el.focus();
     if (
       typeof window.getSelection != "undefined" &&
@@ -421,8 +494,8 @@ class Tribute {
       var sel = window.getSelection();
       sel.removeAllRanges();
       sel.addRange(range);
-    } else if (typeof document.body.createTextRange != "undefined") {
-      var textRange = document.body.createTextRange();
+    } else if (typeof (document.body as any).createTextRange != "undefined") {
+      var textRange = (document.body as any).createTextRange();
       textRange.moveToElementText(el);
       textRange.collapse(false);
       textRange.select();
@@ -430,7 +503,7 @@ class Tribute {
   }
 
   // for contenteditable
-  insertTextAtCursor(text) {
+  insertTextAtCursor(text: string): void {
     var sel, range, html;
     sel = window.getSelection();
     range = sel.getRangeAt(0);
@@ -444,7 +517,7 @@ class Tribute {
   }
 
   // for regular inputs
-  insertAtCaret(textarea, text) {
+  insertAtCaret(textarea: HTMLTextAreaElement | HTMLInputElement, text: string): void {
     var scrollPos = textarea.scrollTop;
     var caretPos = textarea.selectionStart;
 
@@ -461,7 +534,7 @@ class Tribute {
     textarea.scrollTop = scrollPos;
   }
 
-  hideMenu() {
+  hideMenu(): void {
     if (this.menu) {
       this.menu.style.cssText = "display: none;";
       this.isActive = false;
@@ -470,19 +543,18 @@ class Tribute {
     }
   }
 
-  selectItemAtIndex(index, originalEvent) {
-    index = parseInt(index);
+  selectItemAtIndex(index: number | string, originalEvent?: Event): void {
     if (typeof index !== "number" || isNaN(index)) return;
     let item = this.current.filteredItems[index];
     let content = this.current.collection.selectTemplate(item);
     if (content !== null) this.replaceText(content, originalEvent, item);
   }
 
-  replaceText(content, originalEvent, item) {
+  replaceText(content: string, originalEvent?: Event, item?: any): void {
     this.range.replaceTriggerText(content, true, true, originalEvent, item);
   }
 
-  _append(collection, newValues, replace) {
+  _append(collection: TributeCollection, newValues: TributeItem[], replace?: boolean): void {
     if (typeof collection.values === "function") {
       throw new Error("Unable to append to values, as it is a function.");
     } else if (!replace) {
@@ -492,8 +564,7 @@ class Tribute {
     }
   }
 
-  append(collectionIndex, newValues, replace) {
-    let index = parseInt(collectionIndex);
+  append(index: number, newValues: TributeItem[], replace?: boolean): void {
     if (typeof index !== "number")
       throw new Error("please provide an index for the collection to update.");
 
@@ -502,7 +573,7 @@ class Tribute {
     this._append(collection, newValues, replace);
   }
 
-  appendCurrent(newValues, replace) {
+  appendCurrent(newValues: TributeItem[], replace?: boolean): void {
     if (this.isActive) {
       this._append(this.current.collection, newValues, replace);
     } else {
@@ -512,14 +583,9 @@ class Tribute {
     }
   }
 
-  detach(el) {
+  detach(el: HTMLElement | NodeList | HTMLCollection | HTMLElement[] | any): void {
     if (!el) {
       throw new Error("[Tribute] Must pass in a DOM node or NodeList.");
-    }
-
-    // Check if it is a jQuery collection
-    if (typeof jQuery !== "undefined" && el instanceof jQuery) {
-      el = el.get();
     }
 
     // Is el an Array/Array-like object?
@@ -537,17 +603,17 @@ class Tribute {
     }
   }
 
-  _detach(el) {
+  _detach(el: HTMLElement): void {
     this.events.unbind(el);
-    if (el.tributeMenu) {
-      this.menuEvents.unbind(el.tributeMenu);
+    if ((el as any).tributeMenu) {
+      this.menuEvents.unbind((el as any).tributeMenu);
     }
 
     setTimeout(() => {
       el.removeAttribute("data-tribute");
       this.isActive = false;
-      if (el.tributeMenu) {
-        el.tributeMenu.remove();
+      if ((el as any).tributeMenu) {
+        (el as any).tributeMenu.remove();
       }
     });
   }

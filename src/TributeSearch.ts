@@ -1,21 +1,49 @@
 // Thanks to https://github.com/mattyork/fuzzy
+
+interface MatchResult {
+    rendered: string;
+    score: number;
+}
+
+interface TraverseResult {
+    score: number;
+    cache: number[];
+}
+
+interface SearchOptions {
+    pre?: string;
+    post?: string;
+    caseSensitive?: boolean;
+    skip?: boolean;
+    extract?: (item: any) => string;
+}
+
+interface FilterResult {
+    string: string;
+    score: number;
+    index: number;
+    original: any;
+}
+
 class TributeSearch {
-    constructor(tribute) {
+    tribute: any;
+
+    constructor(tribute: any) {
         this.tribute = tribute
         this.tribute.search = this
     }
 
-    simpleFilter(pattern, array) {
+    simpleFilter(pattern: string, array: string[]): string[] {
         return array.filter(string => {
             return this.test(pattern, string)
         })
     }
 
-    test(pattern, string) {
+    test(pattern: string, string: string): boolean {
         return this.match(pattern, string) !== null
     }
 
-    match(pattern, string, opts) {
+    match(pattern: string, string: string, opts?: SearchOptions): MatchResult | null {
         opts = opts || {}
         let patternIdx = 0,
             result = [],
@@ -43,7 +71,7 @@ class TributeSearch {
         }
     }
 
-    traverse(string, pattern, stringIndex, patternIndex, patternCache) {
+    traverse(string: string, pattern: string, stringIndex: number, patternIndex: number, patternCache: number[]): TraverseResult | undefined {
         if (this.tribute.autocompleteSeparator) {
             // if the pattern search at end
             pattern = pattern.split(this.tribute.autocompleteSeparator).splice(-1)[0];
@@ -87,7 +115,7 @@ class TributeSearch {
         return best
     }
 
-    calculateScore(patternCache) {
+    calculateScore(patternCache: number[]): number {
         let score = 0
         let temp = 1
 
@@ -107,7 +135,7 @@ class TributeSearch {
         return score
     }
 
-    render(string, indices, pre, post) {
+    render(string: string, indices: number[], pre: string, post: string): string {
         var rendered = string.substring(0, indices[0])
 
         indices.forEach((index, i) => {
@@ -118,7 +146,7 @@ class TributeSearch {
         return rendered
     }
 
-    filter(pattern, arr, opts) {
+    filter(pattern: string, arr: any[], opts?: SearchOptions): FilterResult[] {
         opts = opts || {}
         return arr
             .reduce((prev, element, idx, arr) => {

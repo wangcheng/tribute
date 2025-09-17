@@ -1,13 +1,45 @@
 // Thanks to https://github.com/jeff-collins/ment.io
-import "./utils";
+
+
+interface Coordinates {
+    position?: string;
+    top?: number;
+    left?: number;
+    right?: number;
+    bottom?: number;
+    maxHeight?: number;
+    maxWidth?: number;
+}
+
+type FinalCoordinates = Omit<Coordinates, 'top'|'left'> & {
+     top?: number | 'auto';
+    left?: number | 'auto';
+}
+
+interface MenuDimensions {
+    width: number;
+    height: number;
+}
+
+interface TriggerInfo {
+    mentionPosition: number;
+    mentionText: string;
+    mentionSelectedElement: Element | null;
+    mentionSelectedPath?: number[];
+    mentionSelectedOffset?: number;
+    mentionTriggerChar?: string;
+}
 
 class TributeRange {
-    constructor(tribute) {
+    tribute: any;
+    menu: Element;
+
+    constructor(tribute: any) {
         this.tribute = tribute
         this.tribute.range = this
     }
 
-    getDocument() {
+    getDocument(): Document {
         let iframe
         if (this.tribute.current.collection) {
             iframe = this.tribute.current.collection.iframe
@@ -20,9 +52,9 @@ class TributeRange {
         return iframe.contentWindow.document
     }
 
-    positionMenuAtCaret(scrollTo) {
+    positionMenuAtCaret(scrollTo?: boolean): void {
         let context = this.tribute.current,
-            coordinates
+            coordinates:FinalCoordinates
 
         let info = this.getTriggerInfo(false, this.tribute.hasTrailingSpace, true, this.tribute.allowSpaces, this.tribute.autocompleteMode)
 
@@ -65,27 +97,27 @@ class TributeRange {
         }
     }
 
-    get menuContainerIsBody() {
+    get menuContainerIsBody(): boolean {
         return this.tribute.menuContainer === document.body || !this.tribute.menuContainer;
     }
 
 
-    selectElement(targetElement, path, offset) {
+    selectElement(targetElement: HTMLElement, path?: number[], offset?: number): void {
         let range
         let elem = targetElement
 
         if (path) {
             for (var i = 0; i < path.length; i++) {
-                elem = elem.childNodes[path[i]]
+                elem = elem.childNodes[path[i]] as HTMLElement
                 if (elem === undefined) {
                     return
                 }
-                while (elem.length < offset) {
-                    offset -= elem.length
-                    elem = elem.nextSibling
+                while ((elem as any).length < offset) {
+                    offset -= (elem as any).length
+                    elem = elem.nextSibling as HTMLElement
                 }
-                if (elem.childNodes.length === 0 && !elem.length) {
-                    elem = elem.previousSibling
+                if (elem.childNodes.length === 0 && !(elem as any).length) {
+                    elem = elem.previousSibling as HTMLElement
                 }
             }
         }
@@ -104,7 +136,7 @@ class TributeRange {
         targetElement.focus()
     }
 
-    replaceTriggerText(text, requireLeadingSpace, hasTrailingSpace, originalEvent, item) {
+    replaceTriggerText(text: string, requireLeadingSpace?: boolean, hasTrailingSpace?: boolean, originalEvent?: Event, item?: any): void {
         let info = this.getTriggerInfo(true, hasTrailingSpace, requireLeadingSpace, this.tribute.allowSpaces, this.tribute.autocompleteMode)
 
         if (info !== undefined) {
@@ -151,7 +183,7 @@ class TributeRange {
         }
     }
 
-    pasteHtml(html, startPos, endPos) {
+    pasteHtml(html: string, startPos: number, endPos: number): void {
         let range, sel
         sel = this.getWindowSelection()
         range = this.getDocument().createRange()
@@ -178,7 +210,7 @@ class TributeRange {
         }
     }
 
-    getWindowSelection() {
+    getWindowSelection(): Selection | null {
         if (this.tribute.collection.iframe) {
             return this.tribute.collection.iframe.contentWindow.getSelection()
         }
@@ -186,7 +218,7 @@ class TributeRange {
         return window.getSelection()
     }
 
-    getNodePositionInParent(element) {
+    getNodePositionInParent(element: Node): number {
         if (element.parentNode === null) {
             return 0
         }
@@ -200,9 +232,9 @@ class TributeRange {
         }
     }
 
-    getContentEditableSelectedPath(ctx) {
+    getContentEditableSelectedPath(ctx: any): { selected: Element; path: number[]; offset: number } | undefined {
         let sel = this.getWindowSelection()
-        let selected = sel.anchorNode
+        let selected = sel.anchorNode as HTMLElement
         let path = []
         let offset
 
@@ -212,7 +244,7 @@ class TributeRange {
             while (selected !== null && ce !== 'true') {
                 i = this.getNodePositionInParent(selected)
                 path.push(i)
-                selected = selected.parentNode
+                selected = selected.parentNode as HTMLElement
                 if (selected !== null) {
                     ce = selected.contentEditable
                 }
@@ -230,7 +262,7 @@ class TributeRange {
         }
     }
 
-    getTextPrecedingCurrentSelection() {
+    getTextPrecedingCurrentSelection(): string {
         let context = this.tribute.current,
             text = ''
 
@@ -259,7 +291,7 @@ class TributeRange {
         return text
     }
 
-    getLastWordInText(text) {
+    getLastWordInText(text: string): string {
         var wordsArray;
         if (this.tribute.autocompleteSeparator) {
             wordsArray = text.split(this.tribute.autocompleteSeparator);
@@ -270,7 +302,7 @@ class TributeRange {
         return wordsArray[wordsCount];
     }
 
-    getTriggerInfo(menuAlreadyActive, hasTrailingSpace, requireLeadingSpace, allowSpaces, isAutocomplete) {
+    getTriggerInfo(menuAlreadyActive?: boolean, hasTrailingSpace?: boolean, requireLeadingSpace?: boolean, allowSpaces?: boolean, isAutocomplete?: boolean): TriggerInfo | undefined {
         let ctx = this.tribute.current
         let selected, path, offset
 
@@ -359,7 +391,7 @@ class TributeRange {
         }
     }
 
-    lastIndexWithLeadingSpace (str, trigger) {
+    lastIndexWithLeadingSpace(str: string, trigger: string): number {
         let reversedStr = str.split('').reverse().join('')
         let index = -1
 
@@ -384,11 +416,11 @@ class TributeRange {
         return index
     }
 
-    isContentEditable(element) {
+    isContentEditable(element: Element): boolean {
         return element.nodeName !== 'INPUT' && element.nodeName !== 'TEXTAREA'
     }
 
-    isMenuOffScreen(coordinates, menuDimensions) {
+    isMenuOffScreen(coordinates: Coordinates, menuDimensions: MenuDimensions): { top: boolean; right: boolean; bottom: boolean; left: boolean } {
         let windowWidth = window.innerWidth
         let windowHeight = window.innerHeight
         let doc = document.documentElement
@@ -408,7 +440,7 @@ class TributeRange {
         }
     }
 
-    getMenuDimensions() {
+    getMenuDimensions(): MenuDimensions {
         // Width of the menu depends of its contents and position
         // We must check what its width would be without any obstruction
         // This way, we can achieve good positioning for flipping the menu
@@ -431,7 +463,7 @@ class TributeRange {
        return dimensions
     }
 
-    getTextAreaOrInputUnderlinePosition(element, position, flipped) {
+    getTextAreaOrInputUnderlinePosition(element: HTMLElement, position: number, flipped?: boolean): FinalCoordinates {
         let properties = ['direction', 'boxSizing', 'width', 'height', 'overflowX',
             'overflowY', 'borderTopWidth', 'borderRightWidth',
             'borderBottomWidth', 'borderLeftWidth', 'borderStyle', 'paddingTop',
@@ -442,14 +474,14 @@ class TributeRange {
             'textDecoration', 'letterSpacing', 'wordSpacing'
         ]
 
-        let isFirefox = (window.mozInnerScreenX !== null)
+        let isFirefox = ((window as any).mozInnerScreenX !== null)
 
         let div = this.getDocument().createElement('div')
         div.id = 'input-textarea-caret-position-mirror-div'
         this.getDocument().body.appendChild(div)
 
         let style = div.style
-        let computed = window.getComputedStyle ? getComputedStyle(element) : element.currentStyle
+        let computed:CSSStyleDeclaration = window.getComputedStyle ? getComputedStyle(element) : (element as any).currentStyle
 
         style.whiteSpace = 'pre-wrap'
         if (element.nodeName !== 'INPUT') {
@@ -474,7 +506,7 @@ class TributeRange {
         // }
 
         let span0 = document.createElement('span')
-        span0.textContent =  element.value.substring(0, position)
+        span0.textContent =  (element as any).value.substring(0, position)
         div.appendChild(span0)
 
         if (element.nodeName === 'INPUT') {
@@ -489,7 +521,7 @@ class TributeRange {
         div.appendChild(span)
 
         let span2 = this.getDocument().createElement('span');
-        span2.textContent = element.value.substring(position);
+        span2.textContent = (element as any).value.substring(position);
         div.appendChild(span2);
 
         let rect = element.getBoundingClientRect()
@@ -509,7 +541,7 @@ class TributeRange {
         return this.getFixedCoordinatesRelativeToRect(spanRect);
     }
 
-    getContentEditableCaretPosition(selectedNodePosition) {
+    getContentEditableCaretPosition(selectedNodePosition: number): FinalCoordinates {
         let range
         let sel = this.getWindowSelection()
 
@@ -524,8 +556,8 @@ class TributeRange {
         return this.getFixedCoordinatesRelativeToRect(rect);
     }
 
-    getFixedCoordinatesRelativeToRect(rect) {
-        let coordinates = {
+    getFixedCoordinatesRelativeToRect(rect: DOMRect): FinalCoordinates {
+        let coordinates: FinalCoordinates = {
             position: 'fixed',
             left: rect.left,
             top: rect.top + rect.height
@@ -572,7 +604,7 @@ class TributeRange {
         return coordinates
     }
 
-    scrollIntoView(elem) {
+    scrollIntoView(elem?: Element): void {
         let reasonableBuffer = 20,
             clientRect
         let maxScrollDisplacement = 100
@@ -584,7 +616,7 @@ class TributeRange {
             clientRect = e.getBoundingClientRect()
 
             if (clientRect.height === 0) {
-                e = e.childNodes[0]
+                e = e.childNodes[0] as Element
                 if (e === undefined || !e.getBoundingClientRect) {
                     return
                 }

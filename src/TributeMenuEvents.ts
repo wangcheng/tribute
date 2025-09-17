@@ -1,11 +1,18 @@
 class TributeMenuEvents {
-  constructor(tribute) {
+  tribute: any;
+  menu: Element | null;
+  menuClickEvent: (event: Event) => void;
+  menuContainerScrollEvent: () => void;
+  windowResizeEvent: () => void;
+  menuContainer: Element | null;
+
+  constructor(tribute: any) {
     this.tribute = tribute;
     this.tribute.menuEvents = this;
     this.menu = this.tribute.menu;
   }
 
-  bind(menu) {
+  bind(menu: Element): void {
     this.menuClickEvent = this.tribute.events.click.bind(null, this);
     this.menuContainerScrollEvent = this.debounce(
       () => {
@@ -46,7 +53,7 @@ class TributeMenuEvents {
     }
   }
 
-  unbind(menu) {
+  unbind(menu: Element): void {
     this.tribute.range
       .getDocument()
       .removeEventListener("mousedown", this.menuClickEvent, false);
@@ -66,19 +73,17 @@ class TributeMenuEvents {
     }
   }
 
-  debounce(func, wait, immediate) {
+  debounce(func: Function, wait: number, immediate?: boolean): () => void {
     var timeout;
-    return () => {
-      var context = this,
-        args = arguments;
+    return (...args) => {
       var later = () => {
         timeout = null;
-        if (!immediate) func.apply(context, args);
+        if (!immediate) func.apply(this, args);
       };
       var callNow = immediate && !timeout;
       clearTimeout(timeout);
       timeout = setTimeout(later, wait);
-      if (callNow) func.apply(context, args);
+      if (callNow) func.apply(this, args);
     };
   }
 }
